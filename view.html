@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>view</title>
+    <meta name="viewport" content="width=device-width,user-scalable=no">
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+    <script>
+$(function () {
+    var $canvas = $("#canvas");
+    var canvas = $canvas.get(0);
+
+    $(window).on('load resize', function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
+    function Color(r, g, b, a) {
+        this.r = parseInt(r);
+        this.g = parseInt(g);
+        this.b = parseInt(b);
+        this.a = a || 1;
+    }
+    Color.prototype.toRGBA = function () {
+        return 'rgba(' + [this.r, this.g, this.b, this.a].join(',') + ')';
+    };
+
+    function Context(canvas) {
+        this.canvas = canvas;
+        this.ctx = this.canvas.getContext('2d');
+        this.ctx.lineWidth = 1;
+        this.ctx.lineJoin = this.ctx.lineCap = 'round';
+    }
+    Context.prototype.draw = function (object) {
+        if (typeof object['draw'] !== 'function') {
+            throw 'object should implement .draw(ctx)';
+        }
+        object.draw(this.ctx);
+    };
+    Context.prototype.clear = function () {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    };
+
+    function Circle(x, y, radius, color) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.color = color;
+    }
+    Circle.prototype.draw = function (ctx) {
+        ctx.fillStyle = this.color.toRGBA();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+        ctx.fill();
+    };
+
+    $(window).on('load', function() {
+        var context = new Context(canvas);
+
+        function refresh() {
+            $.get('http://127.0.0.1:3000', function (res) {
+                var r = res.low ? 255 : 0;
+                var g = !res.low ? 255 : 0;
+                var dot = new Circle(
+                    res.lat * 10 + 10,
+                    res.lng * 10 + 10,
+                    2,
+                    new Color(r, g, 0)
+                );
+                var bearingDot = new Circle(
+                    res.lat * 10 + 10 - 5 * Math.sin(res.bearing),
+                    res.lng * 10 + 10 - 5 * Math.cos(res.bearing),
+                    1,
+                    new Color(0, 0, 0, 0.5)
+                );
+
+                context.clear();
+                context.draw(dot);
+                context.draw(bearingDot);
+
+                setTimeout(refresh, 100);
+            })
+        }
+
+        refresh();
+    });
+
+});
+
+    </script>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+</body>
+</html>
